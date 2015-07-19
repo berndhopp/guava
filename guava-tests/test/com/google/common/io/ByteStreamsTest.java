@@ -493,7 +493,7 @@ public class ByteStreamsTest extends IoTestCase {
               public boolean processBytes(byte[] buf, int off, int len) {
                 assertEquals(
                     copyOfRange(buf, off, off + len),
-                    newPreFilledByteArray(8192));
+                    newPreFilledByteArray(buf.length));
                 return false;
               }
 
