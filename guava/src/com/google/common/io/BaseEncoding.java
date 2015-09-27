@@ -235,7 +235,7 @@ public abstract class BaseEncoding {
   @CheckReturnValue final byte[] decodeChecked(CharSequence chars)
       throws DecodingException {
     chars = padding().trimTrailingFrom(chars);
-    byte[] tmp = new byte[maxDecodedSize(chars.length())];
+    byte[] tmp = ThreadLocalBuffers.getByteArray(maxDecodedSize(chars.length()), false);
     int len = decodeTo(tmp, chars);
     return extract(tmp, len);
   }

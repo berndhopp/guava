@@ -103,7 +103,7 @@ public final class ByteStreams {
   public static long copy(InputStream from, OutputStream to) throws IOException {
     checkNotNull(from);
     checkNotNull(to);
-    byte[] buf = new byte[BUF_SIZE];
+    byte[] buf = ThreadLocalBuffers.getByteArray(BUF_SIZE, false);
     long total = 0;
     while (true) {
       int r = from.read(buf);
@@ -141,7 +141,7 @@ public final class ByteStreams {
       return position - oldPosition;
     }
 
-    ByteBuffer buf = ByteBuffer.allocate(BUF_SIZE);
+    ByteBuffer buf = ThreadLocalBuffers.getByteBuffer(BUF_SIZE, false);
     long total = 0;
     while (from.read(buf) != -1) {
       buf.flip();
@@ -164,7 +164,7 @@ public final class ByteStreams {
     // Presize the ByteArrayOutputStream since we know how large it will need
     // to be, unless that value is less than the default ByteArrayOutputStream
     // size (32).
-    ByteArrayOutputStream out = new ByteArrayOutputStream(Math.max(32, in.available()));
+    ByteArrayOutputStream out = ThreadLocalBuffers.getByteArrayOutputStream(Math.max(32, in.available()));
     copy(in, out);
     return out.toByteArray();
   }
@@ -196,7 +196,7 @@ public final class ByteStreams {
     }
 
     // the stream was longer, so read the rest normally
-    FastByteArrayOutputStream out = new FastByteArrayOutputStream();
+    FastByteArrayOutputStream out = (FastByteArrayOutputStream)ThreadLocalBuffers.getByteArrayOutputStream();
     out.write(b); // write the byte we read when testing for end of stream
     copy(in, out);
 
@@ -204,19 +204,6 @@ public final class ByteStreams {
     System.arraycopy(bytes, 0, result, 0, bytes.length);
     out.writeTo(result, bytes.length);
     return result;
-  }
-
-  /**
-   * BAOS that provides limited access to its internal byte array.
-   */
-  private static final class FastByteArrayOutputStream extends ByteArrayOutputStream {
-    /**
-     * Writes the contents of the internal buffer to the given array starting at the given offset.
-     * Assumes the array has space to hold count bytes.
-     */
-    void writeTo(byte[] b, int off) {
-      System.arraycopy(buf, 0, b, off, count);
-    }
   }
 
   /**
@@ -798,7 +785,7 @@ public final class ByteStreams {
     checkNotNull(input);
     checkNotNull(processor);
 
-    byte[] buf = new byte[BUF_SIZE];
+    byte[] buf = ThreadLocalBuffers.getByteArray(BUF_SIZE, false);
     int read;
     do {
       read = input.read(buf);

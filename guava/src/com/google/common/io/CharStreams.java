@@ -62,7 +62,7 @@ public final class CharStreams {
   public static long copy(Readable from, Appendable to) throws IOException {
     checkNotNull(from);
     checkNotNull(to);
-    CharBuffer buf = CharBuffer.allocate(BUF_SIZE);
+    CharBuffer buf = ThreadLocalBuffers.getCharBuffer(BUF_SIZE, true);
     long total = 0;
     while (from.read(buf) != -1) {
       buf.flip();
