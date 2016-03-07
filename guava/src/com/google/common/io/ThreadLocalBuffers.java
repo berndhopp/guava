@@ -27,9 +27,10 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 @Beta
 @GwtCompatible(emulated = true)
-final class ThreadLocalBuffers {
+public final class ThreadLocalBuffers {
 
-    private static final int INIT_BYTE_SIZE = 8192;
+    private static int initByteSize = 8192;
+    private static boolean enabled = true;
     private static final int MAX_BYTE_SIZE = 65536;
 
     @GwtIncompatible// ThreadLocal, Reference, ByteArrayOutputStream
@@ -41,6 +42,18 @@ final class ThreadLocalBuffers {
             new ThreadLocal<Reference<byte[]>>();
 
     private ThreadLocalBuffers() {
+    }
+
+    public static void setInitByteSize(int initByteSize){
+        checkArgument(initByteSize > 0, "initByteSize must be larger than 0, was %s", initByteSize);
+        checkArgument(initByteSize < MAX_BYTE_SIZE, "initByteSize must not be larger than %s, was %s", MAX_BYTE_SIZE, initByteSize);
+        checkArgument((initByteSize % 2) == 0, "initByteSize must be an even number, was %s", initByteSize);
+
+        ThreadLocalBuffers.initByteSize = initByteSize;
+    }
+
+    public static void setEnabled(boolean enabled){
+        ThreadLocalBuffers.enabled = enabled;
     }
 
     /**
@@ -78,8 +91,13 @@ final class ThreadLocalBuffers {
      */
     public static byte[] getByteArray(int minSize, boolean zeroed) {
         checkArgument(minSize >= 0, "minSize must not be negative");
-        checkArgument(minSize <= MAX_BYTE_SIZE, "minSize must not exceed 2^16");
 
+        if(!enabled){
+            return new byte[minSize];
+        }
+
+        checkArgument(minSize <= MAX_BYTE_SIZE, "minSize must not exceed 2^16");
+        
         Reference<byte[]> reference = BYTE_ARRAY_THREADLOCAL.get();
 
         if (reference == null) {
@@ -102,7 +120,7 @@ final class ThreadLocalBuffers {
     @GwtIncompatible // ThreadLocal, Reference
     private static byte[] createAndCacheByteArray(int minSize) {
 
-        int size = INIT_BYTE_SIZE;
+        int size = initByteSize;
 
         while (size < minSize) {
             size *= 2;
@@ -110,9 +128,9 @@ final class ThreadLocalBuffers {
 
         byte[] byteArray = new byte[size];
 
-        boolean sizeIsInitSize = (size == INIT_BYTE_SIZE);
+        boolean sizeIsInitSize = (size == initByteSize);
 
-        //only 8k-buffers are soft-referenced to avoid http://bugs.java.com/bugdatabase/view_bug.do?bug_id=6912889
+        //only default-size buffers are soft-referenced to avoid http://bugs.java.com/bugdatabase/view_bug.do?bug_id=6912889
         Reference<byte[]> reference = sizeIsInitSize
                 ? new SoftReference<byte[]>(byteArray)
                 : new WeakReference<byte[]>(byteArray);
@@ -237,6 +255,10 @@ final class ThreadLocalBuffers {
     public static ByteArrayOutputStream getByteArrayOutputStream(int minSize) {
         checkArgument(minSize >= 0, "minSize must not be negative");
 
+        if(!enabled){
+            return new FastByteArrayOutputStream(minSize);
+        }
+
         Reference<ByteArrayOutputStream> reference = BYTE_ARRAY_OUTPUTSTREAM_THREADLOCAL
                 .get();
 
@@ -257,7 +279,7 @@ final class ThreadLocalBuffers {
 
     @GwtIncompatible // ByteArrayOutputStream, Reference, ThreadLocal
     private static ByteArrayOutputStream createAndCacheByteArrayOutputStream(int minSize) {
-        int size = Math.max(INIT_BYTE_SIZE, minSize);
+        int size = Math.max(initByteSize, minSize);
 
         ByteArrayOutputStream baos = new FastByteArrayOutputStream(size);
 
