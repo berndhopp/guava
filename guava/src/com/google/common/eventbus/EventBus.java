@@ -14,17 +14,16 @@
 
 package com.google.common.eventbus;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.annotations.Beta;
 import com.google.common.base.MoreObjects;
-import com.google.common.util.concurrent.MoreExecutors;
+
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Locale;
-import java.util.concurrent.Executor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Dispatches events to listeners, and provides ways for listeners to register themselves.
@@ -97,7 +96,6 @@ public class EventBus {
   private static final Logger logger = Logger.getLogger(EventBus.class.getName());
 
   private final String identifier;
-  private final Executor executor;
   private final SubscriberExceptionHandler exceptionHandler;
 
   private final SubscriberRegistry subscribers = new SubscriberRegistry(this);
@@ -119,7 +117,6 @@ public class EventBus {
   public EventBus(String identifier) {
     this(
         identifier,
-        MoreExecutors.directExecutor(),
         Dispatcher.perThreadDispatchQueue(),
         LoggingHandler.INSTANCE);
   }
@@ -133,18 +130,15 @@ public class EventBus {
   public EventBus(SubscriberExceptionHandler exceptionHandler) {
     this(
         "default",
-        MoreExecutors.directExecutor(),
         Dispatcher.perThreadDispatchQueue(),
         exceptionHandler);
   }
 
   EventBus(
       String identifier,
-      Executor executor,
       Dispatcher dispatcher,
       SubscriberExceptionHandler exceptionHandler) {
     this.identifier = checkNotNull(identifier);
-    this.executor = checkNotNull(executor);
     this.dispatcher = checkNotNull(dispatcher);
     this.exceptionHandler = checkNotNull(exceptionHandler);
   }
@@ -156,13 +150,6 @@ public class EventBus {
    */
   public final String identifier() {
     return identifier;
-  }
-
-  /**
-   * Returns the default executor this event bus uses for dispatching events to subscribers.
-   */
-  final Executor executor() {
-    return executor;
   }
 
   /**
