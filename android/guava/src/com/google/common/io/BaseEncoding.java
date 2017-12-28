@@ -14,6 +14,22 @@
 
 package com.google.common.io;
 
+import com.google.common.annotations.GwtCompatible;
+import com.google.common.annotations.GwtIncompatible;
+import com.google.common.base.Ascii;
+import com.google.common.base.Objects;
+import com.google.common.buffer.Buffers;
+import com.google.common.buffer.Lease;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Arrays;
+import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
+import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkPositionIndexes;
@@ -23,19 +39,6 @@ import static com.google.common.math.IntMath.log2;
 import static java.math.RoundingMode.CEILING;
 import static java.math.RoundingMode.FLOOR;
 import static java.math.RoundingMode.UNNECESSARY;
-
-import com.google.common.annotations.GwtCompatible;
-import com.google.common.annotations.GwtIncompatible;
-import com.google.common.base.Ascii;
-import com.google.common.base.Objects;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
-import java.util.Arrays;
-import org.checkerframework.checker.nullness.compatqual.MonotonicNonNullDecl;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 /**
  * A binary encoding scheme for reversibly translating between byte sequences and printable ASCII
@@ -226,12 +229,21 @@ public abstract class BaseEncoding {
    *
    * @throws DecodingException if the input is not a valid encoded string according to this
    *     encoding.
-   */ final byte[] decodeChecked(CharSequence chars)
+   */
+  final byte[] decodeChecked(CharSequence chars)
       throws DecodingException {
     chars = trimTrailingPadding(chars);
-    byte[] tmp = new byte[maxDecodedSize(chars.length())];
-    int len = decodeTo(tmp, chars);
-    return extract(tmp, len);
+
+    final Lease<byte[]> lease = Buffers.lease(byte[].class, maxEncodedSize(chars.length()));
+
+    try {
+      final byte[] tmp = lease.getBuffer();
+
+      int len = decodeTo(tmp, chars);
+      return extract(tmp, len);
+    } finally {
+      lease.returnLease();
+    }
   }
 
   /**
